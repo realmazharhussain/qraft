@@ -15,8 +15,31 @@ set -- "${pre_args[@]}" "$@"
 # Parse filters
 parse_filters "$@" || exit $?
 
+# Select table
 table=${table:-$SELECTED_TABLE}
 [[ -z "$table" ]] && err "No table provided. Please, select or provide a table name" && exit 1
+
+if [[ "$table" = *:* ]]; then
+    IFS=, read -ra columns <<< "${table#*:}"
+    table=${table%%:*}
+fi
+
+_table=$(jq -r '.database.tables | .[]' "$CACHE_FILE" | fzf -0 -1 --prompt="Select a table: " --query="$table")
+[[ -z "$_table" ]] && err "Table '$table' not found" && exit 1
+table=$_table
+
+if [[ ${#columns[@]} -gt 0 ]]; then
+    schema=$(sqlite3 "$SELECTED_DATABASE" ".schema $table")
+    schema=${schema#*\(}
+    schema=${schema%\)*}
+    db_columns=$(echo "$schema" | sed -E 's/,[[:space:]]*/\n/g' | cut -d' ' -f1)
+
+    for((i = 0; i < ${#columns[@]}; i++)); do
+        _column=$(fzf -0 -1 --prompt="Select a column: " --query="${columns[$i]}" <<< "$db_columns")
+        [[ -z "$_column" ]] && err "Column '${columns[$i]}' not found in table '$table'" && exit 1
+        columns[i]=$_column
+    done
+fi
 
 # Build query
 query="SELECT "
