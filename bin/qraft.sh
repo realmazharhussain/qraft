@@ -93,6 +93,7 @@ parse() {
             export) action="export" ;;
             import) action="import" ;;
             tables) action="tables" ;;
+            hide) action="hide" ;;
             *)
                 filename=$(real_path "${1%/*}")
                 if [[ -e "$filename" ]]; then
@@ -136,6 +137,7 @@ dispatch() {
         import) ./import.sh "${post_args[@]}" ;;
         tables) ./tables.sh "${post_args[@]}" ;;
         desc) ./desc.sh "${post_args[@]}" ;;
+        hide) ./hide.sh "${post_args[@]}" ;;
         '')
             if [[ $pre_args == "" ]]; then
                 ./default.sh
