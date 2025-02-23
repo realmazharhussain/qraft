@@ -33,6 +33,18 @@ create_database() {
     cd - >/dev/null || return 1
 }
 
+update_cache() {
+    # test validity, save to cache if successful
+    output=$(sqlite3 "$1" '.tables' 2>&1)
+    if [[ "$output" == *"not a database"* ]]; then
+        $jq "$OUTPUT_FILE" -u success = 'false'
+        $jq "$OUTPUT_FILE" -u message = "$output"
+        return 1
+    else
+        $jq "$CACHE_FILE" -u database.tables = "$(echo "$output" | tr -s ' ' '\n' | jq -R -s 'split("\n") | map(select(. != ""))')"
+    fi
+}
+
 run_default() {
     file=$($jq "$CACHE_FILE" database.file)
     if [[ "$file" == null ]]; then
@@ -53,8 +65,9 @@ run_default() {
             done
         fi
     else
+        update_cache "$file" || return $?
         $jq "$OUTPUT_FILE" -u success = true
-        $jq "$OUTPUT_FILE" -u message = "Nothing to do"
+        $jq "$OUTPUT_FILE" -u message = "Updated cache"
         $jq "$OUTPUT_FILE" -u database = "$file"
     fi
 
